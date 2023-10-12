@@ -1,8 +1,8 @@
 ---
 title: "BSMM-lab-3"
 subtitle: "BSMM 8740 Fall 2023"
-author: "Add your name here"
-date: "Add the date here"
+author: "Rajasree Bammidi"
+date: "2023-10-12"
 format: html
 editor: visual
 self-contained: true
@@ -14,6 +14,12 @@ Load packages and data:
 
 ```{r load-pkg-data}
 #| message: false
+library(magrittr)   # the pipe
+library(tidyverse)  # for data wrangling + visualization
+library(tidymodels) # for modeling
+library(gt)         # for pretty tables
+library(dplyr)
+library(tidyr)
 boston_cocktails <- readr::read_csv('data/boston_cocktails.csv')
 ```
 
@@ -21,15 +27,86 @@ boston_cocktails <- readr::read_csv('data/boston_cocktails.csv')
 
 ### Exercise 1
 
-The median measure amount across across all cocktails is \_\_\_.
+```{r}
+boston_cocktails
+```
+
+```{r}
+summary(boston_cocktails)
+
+median_measure <- median(boston_cocktails$measure_number)
+median_measure
+```
+
+The median measure amount across across all cocktails is 1 .
 
 ### Exercise 2
 
-The **Leap Frog Highball** contains \_\_\_ of gin
+```{r}
+
+library(dplyr)
+library(tidyr)
+library(janitor)
+
+selected_data <- boston_cocktails %>%
+  select(name, category, ingredient, measure_number)
+
+# Pivot the table and fill missing values with zero
+pivoted_data <- selected_data %>%
+  pivot_wider(names_from = ingredient, values_from = measure_number, values_fill = 0)
+
+# Clean column names
+pivoted_data <- pivoted_data %>% clean_names()
+
+# Drop rows with NA values
+cleaned_data <- pivoted_data %>% drop_na()
+
+# Save the new dataset in a variable
+new_dataset <- cleaned_data
+
+leap_frog_highball <- new_dataset %>%
+  filter(name == "Leap Frog Highball")
+
+# Extract the amount of gin
+amount_of_gin <- leap_frog_highball$gin
+
+# Print the result
+amount_of_gin
+```
+
+The **Leap Frog Highball** contains **2 oz** of gin
 
 ### Exercise 3
 
-\_\_\_ predictor variables are prepped by the recipe.
+```{r}
+library(recipes)
+library(dplyr)
+
+# Create a recipe object
+cocktail_recipe <- recipe(~ ., data = boston_cocktails) %>%
+  update_role(name, category, new_role = "id") %>%  # Set name and category as 'id' roles
+  step_rm(all_predictors(), -all_outcomes()) %>%  # Select only numeric predictors
+  step_normalize(all_predictors()) %>%            # Normalize numeric predictors
+  step_pca(all_predictors())                       # Perform PCA on numeric predictors
+
+# Preprocess the data
+prepped_data <- prep(cocktail_recipe, data = boston_cocktails)
+
+# Save the preprocessed data in a variable
+prepped_data <- bake(prepped_data, new_data = NULL)  # Remove the original predictors
+
+# Get the names of all columns in the prepped data
+column_names <- colnames(prepped_data)
+
+# Calculate the number of predictor variables
+num_predictor_variables <- length(column_names)
+
+# Print the result
+num_predictor_variables
+
+```
+
+**2** predictor variables are prepped by the recipe.
 
 ### Exercise 4
 
