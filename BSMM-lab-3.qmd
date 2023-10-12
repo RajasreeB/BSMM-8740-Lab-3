@@ -55,22 +55,16 @@ selected_data <- boston_cocktails %>%
 pivoted_data <- selected_data %>%
   pivot_wider(names_from = ingredient, values_from = measure_number, values_fill = 0)
 
-# Clean column names
-pivoted_data <- pivoted_data %>% clean_names()
+pivoted_data <- pivoted_data %>% clean_names() #Clean column names
 
-# Drop rows with NA values
-cleaned_data <- pivoted_data %>% drop_na()
+cleaned_data <- pivoted_data %>% drop_na()  # Drop rows with NA values
 
-# Save the new dataset in a variable
-new_dataset <- cleaned_data
+new_dataset <- cleaned_data   # Save the new dataset in a variable
 
 leap_frog_highball <- new_dataset %>%
   filter(name == "Leap Frog Highball")
 
-# Extract the amount of gin
 amount_of_gin <- leap_frog_highball$gin
-
-# Print the result
 amount_of_gin
 ```
 
@@ -82,41 +76,63 @@ The **Leap Frog Highball** contains **2 oz** of gin
 library(recipes)
 library(dplyr)
 
-# Create a recipe object
 cocktail_recipe <- recipe(~ ., data = boston_cocktails) %>%
   update_role(name, category, new_role = "id") %>%  # Set name and category as 'id' roles
   step_rm(all_predictors(), -all_outcomes()) %>%  # Select only numeric predictors
   step_normalize(all_predictors()) %>%            # Normalize numeric predictors
   step_pca(all_predictors())                       # Perform PCA on numeric predictors
 
-# Preprocess the data
 prepped_data <- prep(cocktail_recipe, data = boston_cocktails)
 
-# Save the preprocessed data in a variable
 prepped_data <- bake(prepped_data, new_data = NULL)  # Remove the original predictors
+```
 
-# Get the names of all columns in the prepped data
+```{r}
 column_names <- colnames(prepped_data)
 
-# Calculate the number of predictor variables
+#number of predictor variables
 num_predictor_variables <- length(column_names)
-
-# Print the result
 num_predictor_variables
-
 ```
 
 **2** predictor variables are prepped by the recipe.
 
 ### Exercise 4
 
-On average the most used ingredient in the Boston Cocktails dataset is \_\_\_\_.
+```{r}
+recipe_info <- recipes::tidy(cocktail_recipe)
+```
+
+```{r}
+normalization_info <- recipes::tidy(cocktail_recipe, 1)
+```
+
+```{r}
+ingredient_counts <- boston_cocktails %>%
+  group_by(ingredient) %>%
+  summarise(avg_measure = mean(measure_number, na.rm = TRUE)) %>%
+  arrange(desc(avg_measure))
+
+most_used_ingredient <- ingredient_counts$ingredient[1]
+most_used_ingredient
+```
+
+On average the most used ingredient in the Boston Cocktails dataset is **cranberry juice.**
 
 ### Exercise 5
+
+```{r}
+
+```
 
 Describe describe the drinks represented by PC1?
 
 ### Exercise 6
+
+```{r}
+
+
+```
 
 The characteristic alcoholic beverage of each of the first 4 principle components is \_\_\_.
 
