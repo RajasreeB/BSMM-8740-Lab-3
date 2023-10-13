@@ -122,20 +122,117 @@ On average the most used ingredient in the Boston Cocktails dataset is **cranber
 ### Exercise 5
 
 ```{r}
+library(recipes)
+library(dplyr)
+library(forcats)
+library(ggplot2)
+# Assuming 'boston_cocktails' is your dataset
+numeric_columns <- select_if(boston_cocktails, is.numeric)
+boston_cocktails_recipe <-
+recipe(~., data = numeric_columns) %>% 
+update_role(., row_id, ingredient_number, measure_number) %>% 
+step_naomit(all_predictors()) %>% 
+step_normalize(all_predictors()) %>%
+step_pca(all_predictors(), id = "pca") %>% 
+prep()
+boston_cocktails_pca <- 
+boston_cocktails_recipe %>% 
+tidy(id = "pca", matrix = "X") # Use matrix = "X" to keep the original data matrix
+# Filter for components PC1 to PC5 and mutate them as factors
+boston_cocktails_pca_filtered <- boston_cocktails_pca %>%
+filter(component %in% c("PC1", "PC2", "PC3", "PC4", "PC5")) %>%
+mutate(component = fct_inorder(component))
+# Create the PCA plot
+ggplot(boston_cocktails_pca_filtered, aes(x = value, y = terms, fill = terms)) +
+geom_col(show.legend = FALSE) +
+facet_wrap(~component, nrow = 1) +
+labs(y = NULL) +
+theme(axis.text = element_text(size = 7),
+axis.title = element_text(size = 14, face = "bold"))
+
 
 ```
 
 Describe describe the drinks represented by PC1?
 
+-   If row_id is between 0 and 0.25 and has a positive loading in PC1, then it contributes positively to higher values if PC1.
+
+-   If measure_number is between 0 and -0.7 and has a negative loading in PC1, then it contributes negatively to higher values of PC1.
+
+-   If ingredient_number is between 0 and 0.7 and has a positive loading in PC1, then it contributes positively to higher values of PC1.
+
 ### Exercise 6
 
 ```{r}
 
+library(dplyr)
+library(gt)
+#Create a function to color cells based on value
+color_cells <- function(x) {
+  ifelse(x < 0, "red", "green")
+}
+#Slice the top 8 ingredients by component based on absolute value
+top_ingredients_table <- boston_cocktails_pca_filtered %>%
+  filter(component %in% c("PC1", "PC2", "PC3", "PC4")) %>%
+  group_by(component) %>%
+  slice_max(order_by = abs(value), n = 8) %>%
+  ungroup() %>%
+  pivot_wider(names_from = component, values_from = terms)
+#Modify the table to add cell background colors using gt
+for (col in names(top_ingredients_table)[-1]) {
+  top_ingredients_table[[col]] <- sapply(top_ingredients_table[[col]], function(x) {
+    cell_style <- color_cells(x)
+    sprintf('<span style="background-color: %s">%s</span>', cell_style, x)
+  })
+}
+#Create the gt table
+table_pca_ingredients <- top_ingredients_table %>%
+  gt() %>%
+  tab_style(
+    style = cell_fill(
+      color = color_cells(0)
+    ),
+    locations = cells_body()
+  )
+table_pca_ingredients
 
 ```
 
-The characteristic alcoholic beverage of each of the first 4 principle components is \_\_\_.
+The characteristic alcoholic beverage of each of the first 4 principle components is **less than or equal to 0.**
 
 ### Exercise 7
 
+```{r}
+library(dplyr)
+library(recipes)
+library(ggplot2)
+#Create the PCA recipe
+rec <- recipe(~., data = boston_cocktails)
+pca_trans <- rec %>%
+  step_normalize(all_numeric()) %>%
+  step_pca(all_numeric(), num_comp = 3)
+pca_estimates <- prep(pca_trans, training = boston_cocktails)
+pca_data <- bake(pca_estimates, boston_cocktails)
+#Extend the range for the plot
+rng <- extendrange(c(pca_data$PC1, pca_data$PC2))
+#Create PCA with threshold
+with_thresh <- rec %>%
+  step_normalize(all_numeric()) %>%
+  step_pca(all_numeric(), threshold = 0.99)
+with_thresh <- prep(with_thresh, training = boston_cocktails)
+baked_with_thresh <- bake(with_thresh, boston_cocktails)
+
+tidy(pca_trans, number = 2)
+tidy(pca_estimates, number = 2)
+#Create the scatter plot of PC1 and PC2 with labels
+ggplot(pca_data, aes(PC1, PC2, label = name)) +
+  geom_point(aes(color = category), alpha = 0.7, size = 2) +
+  geom_text(check_overlap = TRUE, hjust = "inward") + 
+  labs(color = NULL)
+```
+
 How would you interpret the results of a PCA analysis for a client?
+
+-   PC1 and PC2 fail to distinctly separate data points which suggests a complex or low-variance structure in the data-set.
+
+-   Further exploration of higher dimensional components may be needed to uncover hidden patterns.
